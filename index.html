@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CALL OF DOPEY</title>
+    <title>Color Dash</title>
     <style>
         * {
             margin: 0;
@@ -33,7 +33,6 @@
             position: absolute;
             width: 75px;
             height: 75px;
-            transition: transform 0.2s ease;
             cursor: none;
             pointer-events: none;
         }
@@ -41,86 +40,43 @@
         .player-avatar {
             width: 100%;
             height: 100%;
-            background-image: url('./JPEG image-4BC8-9651-31-0.jpeg');
+            background-image: url('./JPEG image-4A7C-BFAC-A4-0.jpeg');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            transition: filter 0.3s;
-            position: relative;
-        }
-
-        /* Candle beam effect */
-        .player-avatar {
-            width: 100%;
-            height: 100%;
-            background-image: url('./JPEG image-4BC8-9651-31-0.jpeg');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-            transition: filter 0.3s;
             position: relative;
             z-index: 2;
-            filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.3));
+            filter: drop-shadow(0 0 15px rgba(255, 200, 100, 0.5));
         }
 
         .player-avatar::before {
             content: '';
             position: absolute;
-            width: 150px;
-            height: 150px;
+            width: 400px; /* Bigger light effect */
+            height: 200px; /* Make the light directional */
             background: radial-gradient(
-                circle at 50% 50%,
-                rgba(255, 200, 100, 0.7) 0%,
-                rgba(255, 150, 50, 0.5) 20%,
-                rgba(255, 150, 50, 0.2) 40%,
-                transparent 80%
+                ellipse at 50% 50%,
+                rgba(255, 200, 100, 0.8) 0%,
+                rgba(255, 150, 50, 0.5) 30%,
+                rgba(255, 150, 50, 0.2) 60%,
+                transparent 100%
             );
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) rotate(45deg); /* Directional light */
             pointer-events: none;
             animation: flicker 0.5s infinite;
             border-radius: 50%;
             z-index: 1;
         }
         
-        @keyframes collectPulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-        }
-
-        .player-avatar.happy {
-            animation: collectPulse 0.3s ease-in-out;
-        }
-
-        .size-1 { transform: scale(1.1); }
-        .size-2 { transform: scale(1.2); }
-        .size-3 { transform: scale(1.3); }
-        .size-4 { transform: scale(1.4); }
-        .size-5 { transform: scale(1.5); }
-        
-        .target, .obstacle {
-            position: absolute;
-            width: 38px;
-            height: 38px;
-            background: none;
-            font-size: 38px;
-            line-height: 1;
-            user-select: none;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .obstacle {
-            width: 25px;
-            height: 25px;
-            font-size: 25px;
-        }
-        
-        .visible {
-            opacity: 1;
+        @keyframes flicker {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
         }
         
         #score {
@@ -178,9 +134,7 @@
     <div id="high-score">High Score: 0</div>
     <div id="game-container">
         <div id="player">
-            <div class="player-avatar">
-                <div class="player-image"></div>
-            </div>
+            <div class="player-avatar"></div>
         </div>
         <div id="game-over">
             <h2>Game Over!</h2>
@@ -192,7 +146,6 @@
     <script>
         const gameContainer = document.getElementById('game-container');
         const player = document.getElementById('player');
-        const playerAvatar = player.querySelector('.player-avatar');
         const scoreDisplay = document.getElementById('score');
         const highScoreDisplay = document.getElementById('high-score');
         const gameOverScreen = document.getElementById('game-over');
@@ -203,12 +156,6 @@
         let gameActive = true;
         let playerX = window.innerWidth / 2;
         let playerY = window.innerHeight / 2;
-        let lastX = playerX;
-        let lastY = playerY;
-        let targets = [];
-        let obstacles = [];
-        let difficulty = 1;
-        let lastSpawnTime = 0;
 
         updatePlayerPosition();
 
@@ -223,48 +170,13 @@
 
         function handleMovement(e) {
             if (!gameActive) return;
-            
+
             const rect = gameContainer.getBoundingClientRect();
             const newX = e.clientX - rect.left - player.offsetWidth / 2;
             const newY = e.clientY - rect.top - player.offsetHeight / 2;
-            
-            // Calculate movement direction
-            const deltaX = newX - playerX;
-            const deltaY = newY - playerY;
-            
-            // Calculate angle for rotation
-            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-            
-            // Update rotation and flip
-            player.style.transform = `rotate(${angle}deg)`;
-            playerAvatar.style.transform = `scaleX(${deltaX < 0 ? -1 : 1})`;
-            
-            // Check proximity to items and update visibility
-            const playerPos = { x: newX + player.offsetWidth / 2, y: newY + player.offsetHeight / 2 };
-            const lightRadius = 120; // Reduced radius for visibility check
-            
-            [...targets, ...obstacles].forEach(item => {
-                const itemRect = item.getBoundingClientRect();
-                const itemCenter = {
-                    x: itemRect.left + itemRect.width / 2,
-                    y: itemRect.top + itemRect.height / 2
-                };
-                
-                const distance = Math.hypot(
-                    playerPos.x - (itemRect.left + itemRect.width/2 - rect.left),
-                    playerPos.y - (itemRect.top + itemRect.height/2 - rect.top)
-                );
-                
-                if (distance < lightRadius) {
-                    item.classList.add('visible');
-                } else {
-                    item.classList.remove('visible');
-                }
-            });
-            
+
             playerX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - player.offsetWidth));
             playerY = Math.max(0, Math.min(newY, gameContainer.offsetHeight - player.offsetHeight));
-            
             updatePlayerPosition();
         }
 
@@ -279,87 +191,8 @@
             player.style.top = playerY + 'px';
         }
 
-        // Rest of the game logic remains the same
-        function spawnTarget() {
-            const target = document.createElement('div');
-            target.className = 'target';
-            target.textContent = '🍒';
-            const x = Math.random() * (gameContainer.offsetWidth - 25);
-            const y = Math.random() * (gameContainer.offsetHeight - 25);
-            target.style.left = x + 'px';
-            target.style.top = y + 'px';
-            gameContainer.appendChild(target);
-            targets.push(target);
-        }
-
-        function spawnObstacle() {
-            const obstacle = document.createElement('div');
-            obstacle.className = 'obstacle';
-            obstacle.textContent = '✂️';
-            const x = Math.random() * (gameContainer.offsetWidth - 25);
-            const y = Math.random() * (gameContainer.offsetHeight - 25);
-            obstacle.style.left = x + 'px';
-            obstacle.style.top = y + 'px';
-            gameContainer.appendChild(obstacle);
-            obstacles.push(obstacle);
-        }
-
-        function checkCollisions() {
-            const playerRect = player.getBoundingClientRect();
-
-            targets.forEach((target, index) => {
-                const targetRect = target.getBoundingClientRect();
-                if (isColliding(playerRect, targetRect)) {
-                    target.remove();
-                    targets.splice(index, 1);
-                    score += Math.floor(10 * difficulty);
-                    difficulty += 0.1;
-                    scoreDisplay.textContent = `Score: ${score}`;
-                    
-                    playerAvatar.classList.add('happy');
-                    setTimeout(() => playerAvatar.classList.remove('happy'), 300);
-                    
-                    const sizeClass = Math.min(Math.floor(score / 100), 5);
-                    playerAvatar.classList.remove('size-1', 'size-2', 'size-3', 'size-4', 'size-5');
-                    if (sizeClass > 0) {
-                        playerAvatar.classList.add(`size-${sizeClass}`);
-                    }
-                }
-            });
-
-            obstacles.forEach(obstacle => {
-                const obstacleRect = obstacle.getBoundingClientRect();
-                if (isColliding(playerRect, obstacleRect)) {
-                    gameOver();
-                }
-            });
-        }
-
-        function isColliding(rect1, rect2) {
-            return !(rect1.right < rect2.left || 
-                    rect1.left > rect2.right || 
-                    rect1.bottom < rect2.top || 
-                    rect1.top > rect2.bottom);
-        }
-
-        function gameOver() {
-            gameActive = false;
-            gameOverScreen.style.display = 'block';
-            finalScoreDisplay.textContent = score;
-            if (score > highScore) {
-                highScore = score;
-                highScoreDisplay.textContent = `High Score: ${highScore}`;
-            }
-        }
-
         function restartGame() {
-            targets.forEach(target => target.remove());
-            obstacles.forEach(obstacle => obstacle.remove());
-            targets = [];
-            obstacles = [];
-            
             score = 0;
-            difficulty = 1;
             scoreDisplay.textContent = 'Score: 0';
             gameOverScreen.style.display = 'none';
             gameActive = true;
@@ -367,24 +200,6 @@
             playerY = window.innerHeight / 2;
             updatePlayerPosition();
         }
-
-        function gameLoop() {
-            if (gameActive) {
-                const currentTime = Date.now();
-                if (currentTime - lastSpawnTime > 1000 / difficulty) {
-                    if (Math.random() < 0.7) {
-                        spawnTarget();
-                    } else {
-                        spawnObstacle();
-                    }
-                    lastSpawnTime = currentTime;
-                }
-                checkCollisions();
-            }
-            requestAnimationFrame(gameLoop);
-        }
-
-        gameLoop();
     </script>
 </body>
 </html>
