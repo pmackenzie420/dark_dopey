@@ -63,17 +63,17 @@
             filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.3));
         }
 
-        .player-avatar::after {
+        .player-avatar::before {
             content: '';
             position: absolute;
-            width: 200px;
-            height: 200px;
+            width: 150px;
+            height: 150px;
             background: radial-gradient(
                 circle at 50% 50%,
-                rgba(255, 200, 100, 0.6) 0%,
-                rgba(255, 150, 50, 0.4) 30%,
-                rgba(255, 150, 50, 0.2) 60%,
-                transparent 100%
+                rgba(255, 200, 100, 0.7) 0%,
+                rgba(255, 150, 50, 0.5) 20%,
+                rgba(255, 150, 50, 0.2) 40%,
+                transparent 80%
             );
             top: 50%;
             left: 50%;
@@ -91,7 +91,6 @@
         }
 
         .player-avatar.happy {
-            filter: hue-rotate(90deg) brightness(1.2);
             animation: collectPulse 0.3s ease-in-out;
         }
 
@@ -179,7 +178,9 @@
     <div id="high-score">High Score: 0</div>
     <div id="game-container">
         <div id="player">
-            <div class="player-avatar"></div>
+            <div class="player-avatar">
+                <div class="player-image"></div>
+            </div>
         </div>
         <div id="game-over">
             <h2>Game Over!</h2>
@@ -240,7 +241,7 @@
             
             // Check proximity to items and update visibility
             const playerPos = { x: newX + player.offsetWidth / 2, y: newY + player.offsetHeight / 2 };
-            const lightRadius = 200; // Radius of light effect
+            const lightRadius = 120; // Reduced radius for visibility check
             
             [...targets, ...obstacles].forEach(item => {
                 const itemRect = item.getBoundingClientRect();
