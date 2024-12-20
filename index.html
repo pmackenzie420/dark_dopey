@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Call of Dopey</title>
+    <title>Call Of Dopey</title>
     <style>
         * {
             margin: 0;
@@ -31,9 +31,10 @@
 
         #player {
             position: absolute;
-            width: 75px;
-            height: 75px;
+            width: 120px; /* Larger avatar */
+            height: 120px;
             pointer-events: none;
+            z-index: 2; /* Above the light */
         }
 
         .player-avatar {
@@ -44,15 +45,14 @@
             background-repeat: no-repeat;
             background-position: center;
             position: relative;
-            z-index: 2;
-            filter: drop-shadow(0 0 15px rgba(255, 200, 100, 0.5));
+            filter: drop-shadow(0 0 15px rgba(255, 200, 100, 0.8));
         }
 
-        .player-avatar::before {
+        .light-effect {
             content: '';
             position: absolute;
-            width: 300px;
-            height: 300px;
+            width: 350px;
+            height: 350px;
             background: radial-gradient(
                 circle at 50% 50%,
                 rgba(255, 200, 100, 0.7) 0%,
@@ -63,34 +63,28 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            pointer-events: none;
             border-radius: 50%;
-        }
-
-        .target {
-            position: absolute;
-            width: 38px;
-            height: 38px;
-            background: none;
-            font-size: 38px;
-            line-height: 1;
-            user-select: none;
+            z-index: 1; /* Below avatar */
             pointer-events: none;
-            transition: opacity 0.3s ease;
         }
 
-        .target::before {
-            content: '🍒'; /* Cherry */
-        }
-
-        .obstacle {
+        .target, .obstacle {
             position: absolute;
             width: 50px;
             height: 50px;
-            background-image: url('./JPEG image-4FD7-9C7C-70-0.jpeg'); /* Adjust the image path */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .target {
+            background-image: url('cherry.png'); /* Use a cherry image */
+        }
+
+        .obstacle {
+            background-image: url('obstacle.png'); /* Use an obstacle image */
         }
 
         .visible {
@@ -142,6 +136,7 @@
     <div id="game-container">
         <div id="player">
             <div class="player-avatar"></div>
+            <div class="light-effect" id="light"></div>
         </div>
         <div id="game-over">
             <h2>Game Over!</h2>
@@ -153,6 +148,7 @@
     <script>
         const gameContainer = document.getElementById('game-container');
         const player = document.getElementById('player');
+        const light = document.getElementById('light');
         const scoreDisplay = document.getElementById('score');
         const highScoreDisplay = document.getElementById('high-score');
         const gameOverScreen = document.getElementById('game-over');
@@ -170,20 +166,46 @@
             player.style.top = `${playerY}px`;
         }
 
+        function flickerLight() {
+            const flickerScale = Math.random() * 0.05 + 1; // Slightly varies the size
+            light.style.transform = `translate(-50%, -50%) scale(${flickerScale})`;
+        }
+
         function spawnTarget() {
             const target = document.createElement('div');
             target.className = 'target';
-            target.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
-            target.style.top = `${Math.random() * (gameContainer.offsetHeight - 50)}px`;
+            positionElementRandomly(target);
             gameContainer.appendChild(target);
         }
 
         function spawnObstacle() {
             const obstacle = document.createElement('div');
             obstacle.className = 'obstacle';
-            obstacle.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
-            obstacle.style.top = `${Math.random() * (gameContainer.offsetHeight - 50)}px`;
+            positionElementRandomly(obstacle);
             gameContainer.appendChild(obstacle);
+        }
+
+        function positionElementRandomly(element) {
+            element.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
+            element.style.top = `${Math.random() * (gameContainer.offsetHeight - 50)}px`;
+        }
+
+        function checkVisibility() {
+            const lightRect = light.getBoundingClientRect();
+            document.querySelectorAll('.target, .obstacle').forEach(element => {
+                const rect = element.getBoundingClientRect();
+                const isIlluminated =
+                    rect.right >= lightRect.left &&
+                    rect.left <= lightRect.right &&
+                    rect.bottom >= lightRect.top &&
+                    rect.top <= lightRect.bottom;
+
+                if (isIlluminated) {
+                    element.classList.add('visible');
+                } else {
+                    element.classList.remove('visible');
+                }
+            });
         }
 
         function checkCollisions() {
@@ -233,11 +255,13 @@
             playerX = e.clientX - player.offsetWidth / 2;
             playerY = e.clientY - player.offsetHeight / 2;
             updatePlayerPosition();
+            checkVisibility();
             checkCollisions();
         });
 
         setInterval(spawnTarget, 2000);
         setInterval(spawnObstacle, 3000);
+        setInterval(flickerLight, 100);
     </script>
 </body>
 </html>
