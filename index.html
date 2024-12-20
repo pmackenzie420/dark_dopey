@@ -24,7 +24,7 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            background: #1a1a1a;
+            background: #111111;
             overflow: hidden;
             cursor: none;
         }
@@ -50,24 +50,36 @@
         }
 
         /* Candle beam effect */
+        .player-avatar {
+            filter: drop-shadow(0 0 10px rgba(255, 200, 100, 0.3));
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            25% { opacity: 0.95; }
+            50% { opacity: 0.97; }
+            75% { opacity: 0.93; }
+            100% { opacity: 1; }
+        }
+
         .player-avatar::after {
             content: '';
             position: absolute;
-            width: 100px;
-            height: 150px;
-            background: conic-gradient(
-                from -90deg at 50% 0%,
-                transparent 150deg,
-                rgba(255, 200, 100, 0.4) 165deg,
-                rgba(255, 150, 50, 0.3) 180deg,
-                rgba(255, 200, 100, 0.4) 195deg,
-                transparent 210deg
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(
+                circle at 50% 50%,
+                rgba(255, 200, 100, 0.6) 0%,
+                rgba(255, 150, 50, 0.4) 30%,
+                rgba(255, 150, 50, 0.2) 60%,
+                transparent 100%
             );
             top: 50%;
             left: 50%;
-            transform-origin: 50% 0;
+            transform: translate(-50%, -50%);
             pointer-events: none;
-            transition: transform 0.2s ease;
+            animation: flicker 0.5s infinite;
+            border-radius: 50%;
         }
         
         @keyframes collectPulse {
