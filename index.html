@@ -41,7 +41,7 @@
         .player-avatar {
             width: 100%;
             height: 100%;
-            background-image: url('./JPEG image-4BC8-9651-31-0.jpeg');
+            background-image: url('./JPEG image-4A7C-BFAC-A4-0.jpeg');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
@@ -55,11 +55,13 @@
             position: absolute;
             width: 100px;
             height: 150px;
-            background: radial-gradient(
-                circle at 50% 0%,
-                rgba(255, 200, 100, 0.4) 0%,
-                rgba(255, 150, 50, 0.1) 50%,
-                transparent 100%
+            background: conic-gradient(
+                from -90deg at 50% 0%,
+                transparent 150deg,
+                rgba(255, 200, 100, 0.4) 165deg,
+                rgba(255, 150, 50, 0.3) 180deg,
+                rgba(255, 200, 100, 0.4) 195deg,
+                transparent 210deg
             );
             top: 50%;
             left: 50%;
@@ -85,7 +87,7 @@
         .size-4 { transform: scale(1.4); }
         .size-5 { transform: scale(1.5); }
         
-        .target {
+        .target, .obstacle {
             position: absolute;
             width: 38px;
             height: 38px;
@@ -94,17 +96,18 @@
             line-height: 1;
             user-select: none;
             pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         
         .obstacle {
-            position: absolute;
             width: 25px;
             height: 25px;
-            background: none;
             font-size: 25px;
-            line-height: 1;
-            user-select: none;
-            pointer-events: none;
+        }
+        
+        .visible {
+            opacity: 1;
         }
         
         #score {
@@ -214,34 +217,35 @@
             const deltaX = newX - playerX;
             const deltaY = newY - playerY;
             
-            // Update rotation based on movement direction
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // Horizontal movement is dominant
-                if (deltaX > 0) {
-                    // Moving right
-                    player.style.transform = 'rotate(0deg)';
-                    playerAvatar.style.transform = 'scaleX(1)';
-                } else {
-                    // Moving left
-                    player.style.transform = 'rotate(0deg)';
-                    playerAvatar.style.transform = 'scaleX(-1)';
-                }
-            } else {
-                // Vertical movement is dominant
-                if (deltaY > 0) {
-                    // Moving down
-                    player.style.transform = 'rotate(90deg)';
-                    playerAvatar.style.transform = 'scaleX(1)';
-                } else {
-                    // Moving up
-                    player.style.transform = 'rotate(-90deg)';
-                    playerAvatar.style.transform = 'scaleX(1)';
-                }
-            }
-            
-            // Update candle beam direction
+            // Calculate angle for rotation
             const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-            playerAvatar.style.setProperty('--beam-angle', `${angle}deg`);
+            
+            // Update rotation and flip
+            player.style.transform = `rotate(${angle}deg)`;
+            playerAvatar.style.transform = `scaleX(${deltaX < 0 ? -1 : 1})`;
+            
+            // Check proximity to items and update visibility
+            const playerPos = { x: newX + player.offsetWidth / 2, y: newY + player.offsetHeight / 2 };
+            const lightRadius = 200; // Radius of light effect
+            
+            [...targets, ...obstacles].forEach(item => {
+                const itemRect = item.getBoundingClientRect();
+                const itemCenter = {
+                    x: itemRect.left + itemRect.width / 2,
+                    y: itemRect.top + itemRect.height / 2
+                };
+                
+                const distance = Math.hypot(
+                    playerPos.x - (itemRect.left + itemRect.width/2 - rect.left),
+                    playerPos.y - (itemRect.top + itemRect.height/2 - rect.top)
+                );
+                
+                if (distance < lightRadius) {
+                    item.classList.add('visible');
+                } else {
+                    item.classList.remove('visible');
+                }
+            });
             
             playerX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - player.offsetWidth));
             playerY = Math.max(0, Math.min(newY, gameContainer.offsetHeight - player.offsetHeight));
