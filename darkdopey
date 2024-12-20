@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Color Dash</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1a1a;
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        #player {
+            position: absolute;
+            width: 75px;
+            height: 75px;
+            transition: transform 0.2s ease;
+            cursor: none;
+            pointer-events: none;
+        }
+        
+        .player-avatar {
+            width: 100%;
+            height: 100%;
+            background-image: url('./JPEG image-4A7C-BFAC-A4-0.jpeg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: filter 0.3s;
+            position: relative;
+        }
+
+        /* Candle beam effect */
+        .player-avatar::after {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 150px;
+            background: radial-gradient(
+                circle at 50% 0%,
+                rgba(255, 200, 100, 0.4) 0%,
+                rgba(255, 150, 50, 0.1) 50%,
+                transparent 100%
+            );
+            top: 50%;
+            left: 50%;
+            transform-origin: 50% 0;
+            pointer-events: none;
+            transition: transform 0.2s ease;
+        }
+        
+        @keyframes collectPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .player-avatar.happy {
+            filter: hue-rotate(90deg) brightness(1.2);
+            animation: collectPulse 0.3s ease-in-out;
+        }
+
+        .size-1 { transform: scale(1.1); }
+        .size-2 { transform: scale(1.2); }
+        .size-3 { transform: scale(1.3); }
+        .size-4 { transform: scale(1.4); }
+        .size-5 { transform: scale(1.5); }
+        
+        .target {
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            background: none;
+            font-size: 38px;
+            line-height: 1;
+            user-select: none;
+            pointer-events: none;
+        }
+        
+        .obstacle {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: none;
+            font-size: 25px;
+            line-height: 1;
+            user-select: none;
+            pointer-events: none;
+        }
+        
+        #score {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: #fff;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #high-score {
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            font-size: 18px;
+            color: #ccc;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            cursor: auto;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="high-score">High Score: 0</div>
+    <div id="game-container">
+        <div id="player">
+            <div class="player-avatar"></div>
+        </div>
+        <div id="game-over">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const playerAvatar = player.querySelector('.player-avatar');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('high-score');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+
+        let score = 0;
+        let highScore = 0;
+        let gameActive = true;
+        let playerX = window.innerWidth / 2;
+        let playerY = window.innerHeight / 2;
+        let lastX = playerX;
+        let lastY = playerY;
+        let targets = [];
+        let obstacles = [];
+        let difficulty = 1;
+        let lastSpawnTime = 0;
+
+        updatePlayerPosition();
+
+        gameContainer.addEventListener('mousemove', handleMovement);
+        gameContainer.addEventListener('touchmove', handleTouchMovement);
+
+        window.addEventListener('resize', () => {
+            playerX = (playerX / gameContainer.offsetWidth) * window.innerWidth;
+            playerY = (playerY / gameContainer.offsetHeight) * window.innerHeight;
+            updatePlayerPosition();
+        });
+
+        function handleMovement(e) {
+            if (!gameActive) return;
+            
+            const rect = gameContainer.getBoundingClientRect();
+            const newX = e.clientX - rect.left - player.offsetWidth / 2;
+            const newY = e.clientY - rect.top - player.offsetHeight / 2;
+            
+            // Calculate movement direction
+            const deltaX = newX - playerX;
+            const deltaY = newY - playerY;
+            
+            // Update rotation based on movement direction
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // Horizontal movement is dominant
+                if (deltaX > 0) {
+                    // Moving right
+                    player.style.transform = 'rotate(0deg)';
+                    playerAvatar.style.transform = 'scaleX(1)';
+                } else {
+                    // Moving left
+                    player.style.transform = 'rotate(0deg)';
+                    playerAvatar.style.transform = 'scaleX(-1)';
+                }
+            } else {
+                // Vertical movement is dominant
+                if (deltaY > 0) {
+                    // Moving down
+                    player.style.transform = 'rotate(90deg)';
+                    playerAvatar.style.transform = 'scaleX(1)';
+                } else {
+                    // Moving up
+                    player.style.transform = 'rotate(-90deg)';
+                    playerAvatar.style.transform = 'scaleX(1)';
+                }
+            }
+            
+            // Update candle beam direction
+            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+            playerAvatar.style.setProperty('--beam-angle', `${angle}deg`);
+            
+            playerX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - player.offsetWidth));
+            playerY = Math.max(0, Math.min(newY, gameContainer.offsetHeight - player.offsetHeight));
+            
+            updatePlayerPosition();
+        }
+
+        function handleTouchMovement(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleMovement(touch);
+        }
+
+        function updatePlayerPosition() {
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+        }
+
+        // Rest of the game logic remains the same
+        function spawnTarget() {
+            const target = document.createElement('div');
+            target.className = 'target';
+            target.textContent = '🍒';
+            const x = Math.random() * (gameContainer.offsetWidth - 25);
+            const y = Math.random() * (gameContainer.offsetHeight - 25);
+            target.style.left = x + 'px';
+            target.style.top = y + 'px';
+            gameContainer.appendChild(target);
+            targets.push(target);
+        }
+
+        function spawnObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            obstacle.textContent = '✂️';
+            const x = Math.random() * (gameContainer.offsetWidth - 25);
+            const y = Math.random() * (gameContainer.offsetHeight - 25);
+            obstacle.style.left = x + 'px';
+            obstacle.style.top = y + 'px';
+            gameContainer.appendChild(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+
+            targets.forEach((target, index) => {
+                const targetRect = target.getBoundingClientRect();
+                if (isColliding(playerRect, targetRect)) {
+                    target.remove();
+                    targets.splice(index, 1);
+                    score += Math.floor(10 * difficulty);
+                    difficulty += 0.1;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    
+                    playerAvatar.classList.add('happy');
+                    setTimeout(() => playerAvatar.classList.remove('happy'), 300);
+                    
+                    const sizeClass = Math.min(Math.floor(score / 100), 5);
+                    playerAvatar.classList.remove('size-1', 'size-2', 'size-3', 'size-4', 'size-5');
+                    if (sizeClass > 0) {
+                        playerAvatar.classList.add(`size-${sizeClass}`);
+                    }
+                }
+            });
+
+            obstacles.forEach(obstacle => {
+                const obstacleRect = obstacle.getBoundingClientRect();
+                if (isColliding(playerRect, obstacleRect)) {
+                    gameOver();
+                }
+            });
+        }
+
+        function isColliding(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                    rect1.left > rect2.right || 
+                    rect1.bottom < rect2.top || 
+                    rect1.top > rect2.bottom);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            gameOverScreen.style.display = 'block';
+            finalScoreDisplay.textContent = score;
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+        }
+
+        function restartGame() {
+            targets.forEach(target => target.remove());
+            obstacles.forEach(obstacle => obstacle.remove());
+            targets = [];
+            obstacles = [];
+            
+            score = 0;
+            difficulty = 1;
+            scoreDisplay.textContent = 'Score: 0';
+            gameOverScreen.style.display = 'none';
+            gameActive = true;
+            playerX = window.innerWidth / 2;
+            playerY = window.innerHeight / 2;
+            updatePlayerPosition();
+        }
+
+        function gameLoop() {
+            if (gameActive) {
+                const currentTime = Date.now();
+                if (currentTime - lastSpawnTime > 1000 / difficulty) {
+                    if (Math.random() < 0.7) {
+                        spawnTarget();
+                    } else {
+                        spawnObstacle();
+                    }
+                    lastSpawnTime = currentTime;
+                }
+                checkCollisions();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
